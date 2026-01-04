@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: encasa-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: encasa
+      POSTGRES_USER: encasa_user
+      POSTGRES_PASSWORD: encasa_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
