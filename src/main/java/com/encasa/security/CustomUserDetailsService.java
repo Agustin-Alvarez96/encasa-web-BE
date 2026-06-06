@@ -1,6 +1,5 @@
 package com.encasa.security;
 
-
 import com.encasa.models.User;
 import com.encasa.repositories.UserRepository;
 import org.springframework.security.core.userdetails.*;
@@ -16,16 +15,16 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String email)
-            throws UsernameNotFoundException {
-
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+
+        String role = user.getRole() != null ? user.getRole() : "USER";
 
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getEmail())
                 .password(user.getPassword())
-                .roles(user.getRole())
+                .roles(role)
                 .build();
     }
 }

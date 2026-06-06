@@ -20,6 +20,14 @@ public class User {
     private String password;
 
     private String role;
+    private String name;
+    private String phone;
+    private String avatar;
+
+    @Column(length = 500)
+    private String bio;
+
+    private String location;
 
     public Long getId() {
         return id;

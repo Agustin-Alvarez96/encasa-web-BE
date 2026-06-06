@@ -2,6 +2,7 @@ package com.encasa.auth;
 
 import com.encasa.auth.dto.LoginRequest;
 import com.encasa.auth.dto.RegisterRequest;
+import com.encasa.auth.dto.SyncRequest;
 import com.encasa.models.User;
 import com.encasa.repositories.UserRepository;
 import com.encasa.security.JwtService;
@@ -43,6 +44,26 @@ public class AuthService {
                 )
         );
 
+        return jwtService.generateToken(request.email());
+    }
+
+    public String sync(SyncRequest request) {
+        userRepository.findByEmail(request.email()).ifPresentOrElse(
+                user -> {
+                    if (user.getName() == null && request.name() != null) {
+                        user.setName(request.name());
+                        userRepository.save(user);
+                    }
+                },
+                () -> {
+                    User user = new User();
+                    user.setEmail(request.email());
+                    user.setPassword("GOOGLE_OAUTH_NO_PASSWORD");
+                    user.setRole("USER");
+                    user.setName(request.name());
+                    userRepository.save(user);
+                }
+        );
         return jwtService.generateToken(request.email());
     }
 }
