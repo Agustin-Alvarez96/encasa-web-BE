@@ -1,25 +1,30 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/encasa
-    username: encasa_user
-    password: encasa_pass
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/encasa}
+    username: ${DB_USER:encasa_user}
+    password: ${DB_PASS:encasa_pass}
     hikari:
       connection-init-sql: SET TIME ZONE 'UTC'
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: ${DDL_AUTO:update}
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc:
           timezone: UTC
-  
 
 server:
-  port: 8080
+  port: ${PORT:8080}
+  error:
+    include-message: never
+    include-binding-errors: never
 
 jwt:
-  secret: encasa-super-secret-key-que-luego-va-a-env
-  expiration: 86400000
+  secret: ${JWT_SECRET:encasa-super-secret-key-que-luego-va-a-env}
+  expiration: ${JWT_EXPIRATION:2592000000}
+
+allowed:
+  origins: ${ALLOWED_ORIGINS:http://localhost:3000}

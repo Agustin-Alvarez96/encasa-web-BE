@@ -29,6 +29,11 @@ public class ReviewController {
                 .body(reviewService.create(userDetails.getUsername(), request));
     }
 
+    @GetMapping
+    public List<Review> getAll() {
+        return reviewService.getAll();
+    }
+
     @GetMapping("/professional/{professionalId}")
     public List<Review> getByProfessional(@PathVariable Long professionalId) {
         return reviewService.getByProfessional(professionalId);

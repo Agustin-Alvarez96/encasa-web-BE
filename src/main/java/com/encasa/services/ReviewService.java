@@ -11,6 +11,7 @@ import com.encasa.repositories.UserRepository;
 import com.encasa.reviews.dto.CreateReviewRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -33,26 +34,27 @@ public class ReviewService {
         this.userRepository = userRepository;
     }
 
+    @Transactional
     public Review create(String clientEmail, CreateReviewRequest req) {
         if (req.rating() == null || req.rating() < 1 || req.rating() > 5) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rating must be between 1 and 5");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El rating debe estar entre 1 y 5");
         }
 
         User client = findUser(clientEmail);
 
         Booking booking = bookingRepository.findById(req.bookingId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
 
         if (!booking.getClientUserId().equals(client.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only review your own bookings");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo podés reseñar tus propias reservas");
         }
 
         if (booking.getStatus() != Booking.Status.COMPLETED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Booking must be completed before reviewing");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La reserva debe estar completada para dejar una reseña");
         }
 
         if (reviewRepository.findByBookingId(req.bookingId()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "This booking has already been reviewed");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Esta reserva ya tiene una reseña");
         }
 
         Review review = new Review();
@@ -76,11 +78,12 @@ public class ReviewService {
         return reviewRepository.findByClientUserIdOrderByCreatedAtDesc(userId);
     }
 
+    @Transactional
     public void delete(String email, Long reviewId) {
         User client = findUser(email);
         Review review = findReview(reviewId);
         if (!review.getClientUserId().equals(client.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own reviews");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo podés eliminar tus propias reseñas");
         }
         Long professionalId = review.getProfessionalId();
         reviewRepository.delete(review);
@@ -91,6 +94,7 @@ public class ReviewService {
         return reviewRepository.findAll();
     }
 
+    @Transactional
     public void adminDelete(Long reviewId) {
         Review review = findReview(reviewId);
         Long professionalId = review.getProfessionalId();
@@ -118,11 +122,11 @@ public class ReviewService {
 
     private Review findReview(Long id) {
         return reviewRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reseña no encontrada"));
     }
 
     private User findUser(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
     }
 }

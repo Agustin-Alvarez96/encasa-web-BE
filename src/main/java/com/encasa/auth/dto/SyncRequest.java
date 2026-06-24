@@ -1,3 +1,10 @@
 package com.encasa.auth.dto;
 
-public record SyncRequest(String email, String name) {}
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
+public record SyncRequest(
+        @NotBlank @Email String email,
+        String name,
+        String image
+) {}

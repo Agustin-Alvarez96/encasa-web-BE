@@ -3,6 +3,7 @@ package com.encasa.auth;
 import com.encasa.auth.dto.LoginRequest;
 import com.encasa.auth.dto.RegisterRequest;
 import com.encasa.auth.dto.SyncRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,22 +20,20 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
         return ResponseEntity.ok("User registered");
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         String token = authService.login(request);
         return ResponseEntity.ok(Map.of("token", token));
     }
 
     @PostMapping("/sync")
-    public ResponseEntity<?> sync(@RequestBody SyncRequest request) {
+    public ResponseEntity<?> sync(@Valid @RequestBody SyncRequest request) {
         String token = authService.sync(request);
         return ResponseEntity.ok(Map.of("token", token));
     }
 }
-
-
