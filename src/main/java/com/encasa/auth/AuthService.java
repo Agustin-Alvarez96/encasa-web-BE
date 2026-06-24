@@ -50,10 +50,16 @@ public class AuthService {
     public String sync(SyncRequest request) {
         userRepository.findByEmail(request.email()).ifPresentOrElse(
                 user -> {
+                    boolean changed = false;
                     if (user.getName() == null && request.name() != null) {
                         user.setName(request.name());
-                        userRepository.save(user);
+                        changed = true;
                     }
+                    if (request.image() != null) {
+                        user.setAvatar(request.image());
+                        changed = true;
+                    }
+                    if (changed) userRepository.save(user);
                 },
                 () -> {
                     User user = new User();
@@ -61,10 +67,10 @@ public class AuthService {
                     user.setPassword("GOOGLE_OAUTH_NO_PASSWORD");
                     user.setRole("USER");
                     user.setName(request.name());
+                    user.setAvatar(request.image());
                     userRepository.save(user);
                 }
         );
         return jwtService.generateToken(request.email());
     }
 }
-

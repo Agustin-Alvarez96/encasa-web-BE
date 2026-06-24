@@ -8,6 +8,7 @@ import com.encasa.repositories.ServiceRepository;
 import com.encasa.repositories.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -28,18 +29,19 @@ public class ProfessionalService {
     public Professional getMyProfile(String email) {
         Long userId = findUser(email).getId();
         return professionalRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Professional profile not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil profesional no encontrado"));
     }
 
+    @Transactional
     public Professional register(String email, ProfessionalRequest req) {
         if (req.serviceId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "serviceId is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "serviceId es requerido");
         }
 
         User user = findUser(email);
 
         if (professionalRepository.findByUserId(user.getId()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Professional profile already exists");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe un perfil profesional para este usuario");
         }
 
         String serviceName = resolveServiceName(req.serviceId());
@@ -61,13 +63,18 @@ public class ProfessionalService {
         professional.setReviewCount(0);
         professional.setVerified(false);
 
-        return professionalRepository.save(professional);
+        Professional saved = professionalRepository.save(professional);
+
+        user.setRole("professional");
+        userRepository.save(user);
+
+        return saved;
     }
 
     public Professional updateMyProfile(String email, ProfessionalRequest req) {
         Long userId = findUser(email).getId();
         Professional professional = professionalRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Professional profile not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil profesional no encontrado"));
 
         if (req.name() != null)         professional.setName(req.name());
         if (req.serviceId() != null) {
@@ -84,21 +91,25 @@ public class ProfessionalService {
         return professionalRepository.save(professional);
     }
 
+    @Transactional
     public void deleteMyProfile(String email) {
-        Long userId = findUser(email).getId();
-        Professional professional = professionalRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Professional profile not found"));
+        User user = findUser(email);
+        Professional professional = professionalRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil profesional no encontrado"));
         professionalRepository.delete(professional);
+
+        user.setRole("USER");
+        userRepository.save(user);
     }
 
     private String resolveServiceName(String serviceId) {
         return serviceRepository.findById(serviceId)
                 .map(s -> s.getName())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid serviceId: " + serviceId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "serviceId inválido: " + serviceId));
     }
 
     private User findUser(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
     }
 }
