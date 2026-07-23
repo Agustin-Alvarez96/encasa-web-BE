@@ -1,5 +1,7 @@
 package com.encasa.professionals.dto;
 
+import java.util.List;
+
 public record ProfessionalRequest(
         String name,
         String serviceId,
@@ -7,6 +9,7 @@ public record ProfessionalRequest(
         String image,
         String location,
         String description,
-        Integer experience,
-        String availability
+        String experience,
+        String availability,
+        List<String> tags
 ) {}

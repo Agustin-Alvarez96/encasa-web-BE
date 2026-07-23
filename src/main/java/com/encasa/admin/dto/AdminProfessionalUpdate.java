@@ -7,7 +7,7 @@ public record AdminProfessionalUpdate(
         String image,
         String location,
         String description,
-        Integer experience,
+        String experience,
         String availability,
         Boolean verified
 ) {}

@@ -1,14 +1,17 @@
 package com.encasa.auth;
 
+import com.encasa.auth.dto.AuthResponse;
 import com.encasa.auth.dto.LoginRequest;
 import com.encasa.auth.dto.RegisterRequest;
 import com.encasa.auth.dto.SyncRequest;
 import com.encasa.models.User;
 import com.encasa.repositories.UserRepository;
 import com.encasa.security.JwtService;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthService {
@@ -28,49 +31,46 @@ public class AuthService {
         this.jwtService = jwtService;
     }
 
-    public void register(RegisterRequest request) {
+    public AuthResponse register(RegisterRequest request) {
+        if (userRepository.findByEmail(request.email()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El email ya está registrado");
+        }
         User user = new User();
         user.setEmail(request.email());
         user.setPassword(passwordEncoder.encode(request.password()));
-        user.setRole("USER");
+        user.setName(request.name());
+        user.setRole("client");
         userRepository.save(user);
+
+        String token = jwtService.generateToken(user.getEmail());
+        return new AuthResponse(token, user.getId(), user.getEmail(), user.getName(), user.getRole());
     }
 
-    public String login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.email(),
-                        request.password()
-                )
+                new UsernamePasswordAuthenticationToken(request.email(), request.password())
         );
-
-        return jwtService.generateToken(request.email());
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+        String token = jwtService.generateToken(user.getEmail());
+        return new AuthResponse(token, user.getId(), user.getEmail(), user.getName(), user.getRole());
     }
 
-    public String sync(SyncRequest request) {
-        userRepository.findByEmail(request.email()).ifPresentOrElse(
-                user -> {
-                    boolean changed = false;
-                    if (user.getName() == null && request.name() != null) {
-                        user.setName(request.name());
-                        changed = true;
-                    }
-                    if (request.image() != null) {
-                        user.setAvatar(request.image());
-                        changed = true;
-                    }
-                    if (changed) userRepository.save(user);
-                },
-                () -> {
-                    User user = new User();
-                    user.setEmail(request.email());
-                    user.setPassword("GOOGLE_OAUTH_NO_PASSWORD");
-                    user.setRole("USER");
-                    user.setName(request.name());
-                    user.setAvatar(request.image());
-                    userRepository.save(user);
-                }
-        );
-        return jwtService.generateToken(request.email());
+    public AuthResponse sync(SyncRequest request) {
+        User user = userRepository.findByEmail(request.email()).orElse(null);
+        if (user == null) {
+            user = new User();
+            user.setEmail(request.email());
+            user.setPassword("GOOGLE_OAUTH_NO_PASSWORD");
+            user.setRole("client");
+            user.setName(request.name());
+            user.setAvatar(request.image());
+        } else {
+            if (user.getName() == null && request.name() != null) user.setName(request.name());
+            if (request.image() != null) user.setAvatar(request.image());
+        }
+        userRepository.save(user);
+        String token = jwtService.generateToken(user.getEmail());
+        return new AuthResponse(token, user.getId(), user.getEmail(), user.getName(), user.getRole());
     }
 }

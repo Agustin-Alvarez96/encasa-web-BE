@@ -35,6 +35,11 @@ public class UserService {
         return toResponse(userRepository.save(user));
     }
 
+    public void deleteUser(String email) {
+        User user = findByEmail(email);
+        userRepository.delete(user);
+    }
+
     public void changePassword(String email, ChangePasswordRequest req) {
         User user = findByEmail(email);
         if (!passwordEncoder.matches(req.currentPassword(), user.getPassword())) {

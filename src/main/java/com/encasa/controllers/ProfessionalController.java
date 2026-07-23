@@ -11,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/professionals")
@@ -59,6 +60,15 @@ public class ProfessionalController {
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody ProfessionalRequest request) {
         return ResponseEntity.ok(professionalService.updateMyProfile(userDetails.getUsername(), request));
+    }
+
+    @PatchMapping("/me/availability")
+    public ResponseEntity<Professional> patchAvailability(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody Map<String, String> body) {
+        String availability = body.get("availability");
+        if (availability == null) return ResponseEntity.badRequest().build();
+        return ResponseEntity.ok(professionalService.updateAvailability(userDetails.getUsername(), availability));
     }
 
     @DeleteMapping("/me")

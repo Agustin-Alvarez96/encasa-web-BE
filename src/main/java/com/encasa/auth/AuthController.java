@@ -1,13 +1,13 @@
 package com.encasa.auth;
 
+import com.encasa.auth.dto.AuthResponse;
 import com.encasa.auth.dto.LoginRequest;
 import com.encasa.auth.dto.RegisterRequest;
 import com.encasa.auth.dto.SyncRequest;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
@@ -20,20 +20,17 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
-        authService.register(request);
-        return ResponseEntity.ok("User registered");
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-        String token = authService.login(request);
-        return ResponseEntity.ok(Map.of("token", token));
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 
     @PostMapping("/sync")
-    public ResponseEntity<?> sync(@Valid @RequestBody SyncRequest request) {
-        String token = authService.sync(request);
-        return ResponseEntity.ok(Map.of("token", token));
+    public ResponseEntity<AuthResponse> sync(@Valid @RequestBody SyncRequest request) {
+        return ResponseEntity.ok(authService.sync(request));
     }
 }

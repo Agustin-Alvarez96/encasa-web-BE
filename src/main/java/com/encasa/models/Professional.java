@@ -1,6 +1,8 @@
 package com.encasa.models;
 
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "professionals")
@@ -23,28 +25,16 @@ public class Professional {
     @Column(length = 1000)
     private String description;
 
-    private Integer experience;
+    private String experience;   // "0-2" | "2-5" | "5-10" | "10+"
     private Boolean verified;
     private String availability;
 
-    public Professional() {}
+    @ElementCollection
+    @CollectionTable(name = "professional_tags", joinColumns = @JoinColumn(name = "professional_id"))
+    @Column(name = "tag")
+    private List<String> tags = new ArrayList<>();
 
-    public Professional(String name, String service, String serviceId, Double rating,
-                        Integer reviewCount, Integer hourlyRate, String image, String location,
-                        String description, Integer experience, Boolean verified, String availability) {
-        this.name = name;
-        this.service = service;
-        this.serviceId = serviceId;
-        this.rating = rating;
-        this.reviewCount = reviewCount;
-        this.hourlyRate = hourlyRate;
-        this.image = image;
-        this.location = location;
-        this.description = description;
-        this.experience = experience;
-        this.verified = verified;
-        this.availability = availability;
-    }
+    public Professional() {}
 
     public Long getId() { return id; }
     public Long getUserId() { return userId; }
@@ -57,9 +47,10 @@ public class Professional {
     public String getImage() { return image; }
     public String getLocation() { return location; }
     public String getDescription() { return description; }
-    public Integer getExperience() { return experience; }
+    public String getExperience() { return experience; }
     public Boolean getVerified() { return verified; }
     public String getAvailability() { return availability; }
+    public List<String> getTags() { return tags; }
 
     public void setUserId(Long userId) { this.userId = userId; }
     public void setName(String name) { this.name = name; }
@@ -71,7 +62,8 @@ public class Professional {
     public void setImage(String image) { this.image = image; }
     public void setLocation(String location) { this.location = location; }
     public void setDescription(String description) { this.description = description; }
-    public void setExperience(Integer experience) { this.experience = experience; }
+    public void setExperience(String experience) { this.experience = experience; }
     public void setVerified(Boolean verified) { this.verified = verified; }
     public void setAvailability(String availability) { this.availability = availability; }
+    public void setTags(List<String> tags) { this.tags = tags != null ? tags : new ArrayList<>(); }
 }

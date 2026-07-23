@@ -59,6 +59,7 @@ public class ProfessionalService {
         professional.setDescription(req.description());
         professional.setExperience(req.experience());
         professional.setAvailability(req.availability());
+        professional.setTags(req.tags());
         professional.setRating(0.0);
         professional.setReviewCount(0);
         professional.setVerified(false);
@@ -87,7 +88,16 @@ public class ProfessionalService {
         if (req.description() != null)  professional.setDescription(req.description());
         if (req.experience() != null)   professional.setExperience(req.experience());
         if (req.availability() != null) professional.setAvailability(req.availability());
+        if (req.tags() != null)         professional.setTags(req.tags());
 
+        return professionalRepository.save(professional);
+    }
+
+    public Professional updateAvailability(String email, String availability) {
+        Long userId = findUser(email).getId();
+        Professional professional = professionalRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil profesional no encontrado"));
+        professional.setAvailability(availability);
         return professionalRepository.save(professional);
     }
 

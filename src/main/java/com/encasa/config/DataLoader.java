@@ -54,24 +54,32 @@ public class DataLoader implements CommandLineRunner {
         }
 
         if (professionalRepository.count() == 0) {
-            professionalRepository.saveAll(List.of(
-                new Professional("Roberto Martínez", "Electricidad", "electricidad", 4.9, 47, 6500, "👨‍🔧", "Centro, Mar del Plata",
-                        "Electricista matriculado con 18 años de experiencia. Especializado en tableros, instalaciones completas y reparaciones urgentes.", 18, true, "disponible"),
-                new Professional("Claudia Fernández", "Limpieza", "limpieza", 5.0, 89, 3500, "👩‍💼", "Güemes, Mar del Plata",
-                        "Servicio de limpieza profesional con más de 10 años en Mar del Plata. Trabajo con mis propios productos ecológicos.", 10, true, "disponible"),
-                new Professional("Jorge Suárez", "Plomería", "plomeria", 4.8, 62, 7000, "👨‍🔧", "Los Troncos, Mar del Plata",
-                        "Plomero gasista matriculado. Atiendo emergencias 24hs. Especialista en termotanques, calderas y gas natural.", 15, true, "ocupado"),
-                new Professional("Ana García", "Pintura", "pintura", 4.9, 51, 5500, "👩‍🎨", "La Perla, Mar del Plata",
-                        "Pintora profesional. Trabajos en departamentos, casas y locales comerciales. Pintura, empapelado y revestimientos.", 12, true, "disponible"),
-                new Professional("Martín Rodríguez", "Carpintería", "carpinteria", 4.7, 38, 6000, "👨‍🔧", "Constitución, Mar del Plata",
-                        "Carpintero especializado en muebles a medida, placares y revestimientos. 20 años de experiencia.", 20, true, "disponible"),
-                new Professional("Laura Sánchez", "Aire Acondicionado", "aire-acondicionado", 4.8, 44, 8000, "👩‍🔧", "Punta Mogotes, Mar del Plata",
-                        "Técnica matriculada en climatización. Instalación, service y reparación de aires acondicionados.", 8, true, "disponible"),
-                new Professional("Diego Torres", "Cerrajería", "cerrajeria", 4.9, 73, 4500, "👨‍🔧", "Puerto, Mar del Plata",
-                        "Cerrajero 24hs. Apertura de puertas, cambio de cerraduras y copias. Llego en 30 minutos a toda Mar del Plata.", 14, true, "disponible"),
-                new Professional("Patricia González", "Jardinería", "jardineria", 4.8, 29, 4000, "👩‍🌾", "Camet, Mar del Plata",
-                        "Paisajista y jardinera. Diseño, mantenimiento y parquización. Especializada en jardines de casa en la costa.", 9, true, "disponible")
-            ));
+            Object[][] data = {
+                {"Roberto Martínez","Electricidad","electricidad",4.9,47,6500,"👨‍🔧","Centro, Mar del Plata","Electricista matriculado con 18 años de experiencia. Especializado en tableros, instalaciones completas y reparaciones urgentes.","10+",true,"disponible"},
+                {"Claudia Fernández","Limpieza","limpieza",5.0,89,3500,"👩‍💼","Güemes, Mar del Plata","Servicio de limpieza profesional con más de 10 años en Mar del Plata. Trabajo con mis propios productos ecológicos.","5-10",true,"disponible"},
+                {"Jorge Suárez","Plomería","plomeria",4.8,62,7000,"👨‍🔧","Los Troncos, Mar del Plata","Plomero gasista matriculado. Atiendo emergencias 24hs. Especialista en termotanques, calderas y gas natural.","10+",true,"ocupado"},
+                {"Ana García","Pintura","pintura",4.9,51,5500,"👩‍🎨","La Perla, Mar del Plata","Pintora profesional. Trabajos en departamentos, casas y locales comerciales. Pintura, empapelado y revestimientos.","10+",true,"disponible"},
+                {"Martín Rodríguez","Carpintería","carpinteria",4.7,38,6000,"👨‍🔧","Constitución, Mar del Plata","Carpintero especializado en muebles a medida, placares y revestimientos. 20 años de experiencia.","10+",true,"disponible"},
+                {"Laura Sánchez","Aire Acondicionado","aire-acondicionado",4.8,44,8000,"👩‍🔧","Punta Mogotes, Mar del Plata","Técnica matriculada en climatización. Instalación, service y reparación de aires acondicionados.","5-10",true,"disponible"},
+                {"Diego Torres","Cerrajería","cerrajeria",4.9,73,4500,"👨‍🔧","Puerto, Mar del Plata","Cerrajero 24hs. Apertura de puertas, cambio de cerraduras y copias. Llego en 30 minutos a toda Mar del Plata.","10+",true,"disponible"},
+                {"Patricia González","Jardinería","jardineria",4.8,29,4000,"👩‍🌾","Camet, Mar del Plata","Paisajista y jardinera. Diseño, mantenimiento y parquización. Especializada en jardines de casa en la costa.","5-10",true,"disponible"}
+            };
+            for (Object[] d : data) {
+                Professional p = new Professional();
+                p.setName((String) d[0]);
+                p.setService((String) d[1]);
+                p.setServiceId((String) d[2]);
+                p.setRating((Double) d[3]);
+                p.setReviewCount((Integer) d[4]);
+                p.setHourlyRate((Integer) d[5]);
+                p.setImage((String) d[6]);
+                p.setLocation((String) d[7]);
+                p.setDescription((String) d[8]);
+                p.setExperience((String) d[9]);
+                p.setVerified((Boolean) d[10]);
+                p.setAvailability((String) d[11]);
+                professionalRepository.save(p);
+            }
         }
     }
 }
