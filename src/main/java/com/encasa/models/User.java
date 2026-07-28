@@ -4,8 +4,10 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "users")
 public class User {
 
@@ -19,45 +21,22 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    private String role;
+    @Column(nullable = false)
+    private String role = "USER";
+
     private String name;
-    private String phone;
-    private String avatar;
 
-    @Column(length = 500)
-    private String bio;
+    private String picture;
 
-    private String location;
+    @Column(unique = true)
+    private String googleSub;
 
-    public Long getId() {
-        return id;
-    }
+    @Column(nullable = false)
+    private String authProvider = "LOCAL";
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    @Column(nullable = false)
+    private boolean emailNotifications = true;
 
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
+    @Column(nullable = false)
+    private boolean hasProfessionalProfile = false;
 }

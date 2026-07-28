@@ -1,9 +1,9 @@
 package com.encasa.controllers;
 
+import com.encasa.auth.dto.UserProfileResponse;
 import com.encasa.services.UserService;
 import com.encasa.users.dto.ChangePasswordRequest;
 import com.encasa.users.dto.UpdateProfileRequest;
-import com.encasa.users.dto.UserProfileResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;

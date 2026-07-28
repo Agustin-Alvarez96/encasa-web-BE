@@ -1,10 +1,11 @@
 package com.encasa.services;
 
+import com.encasa.auth.UserProfileMapper;
+import com.encasa.auth.dto.UserProfileResponse;
 import com.encasa.models.User;
 import com.encasa.repositories.UserRepository;
 import com.encasa.users.dto.ChangePasswordRequest;
 import com.encasa.users.dto.UpdateProfileRequest;
-import com.encasa.users.dto.UserProfileResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,22 +23,18 @@ public class UserService {
     }
 
     public UserProfileResponse getProfile(String email) {
-        return toResponse(findByEmail(email));
+        return UserProfileMapper.toResponse(findByEmail(email));
     }
 
     public UserProfileResponse updateProfile(String email, UpdateProfileRequest req) {
         User user = findByEmail(email);
-        if (req.name() != null)     user.setName(req.name());
-        if (req.phone() != null)    user.setPhone(req.phone());
-        if (req.avatar() != null)   user.setAvatar(req.avatar());
-        if (req.bio() != null)      user.setBio(req.bio());
-        if (req.location() != null) user.setLocation(req.location());
-        return toResponse(userRepository.save(user));
+        if (req.name() != null)    user.setName(req.name());
+        if (req.picture() != null) user.setPicture(req.picture());
+        return UserProfileMapper.toResponse(userRepository.save(user));
     }
 
     public void deleteUser(String email) {
-        User user = findByEmail(email);
-        userRepository.delete(user);
+        userRepository.delete(findByEmail(email));
     }
 
     public void changePassword(String email, ChangePasswordRequest req) {
@@ -52,18 +49,5 @@ public class UserService {
     private User findByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-    }
-
-    private UserProfileResponse toResponse(User user) {
-        return new UserProfileResponse(
-                user.getId(),
-                user.getEmail(),
-                user.getName(),
-                user.getPhone(),
-                user.getAvatar(),
-                user.getBio(),
-                user.getLocation(),
-                user.getRole()
-        );
     }
 }

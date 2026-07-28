@@ -1,0 +1,953 @@
+openapi: 3.0.3
+info:
+  title: EnCasa API
+  description: |
+    Contrato mínimo alineado con `encasa-web` (types/index.ts) y el backend Spring Boot.
+
+    **Auth:** el front usa NextAuth (Google). Tras el login OAuth, el cliente debe llamar
+    `POST /auth/oauth/google` para obtener el JWT del backend y enviarlo en `Authorization: Bearer`.
+
+    **Estado:** endpoints marcados con `x-implemented: true` existen hoy en el backend.
+  version: 0.1.0
+  contact:
+    name: EnCasa
+
+servers:
+  - url: http://localhost:8080
+    description: Desarrollo local
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Professionals
+  - name: Services
+  - name: Reviews
+  - name: Requests
+  - name: Dashboard
+  - name: Health
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: healthCheck
+      x-implemented: true
+      responses:
+        "200":
+          description: API disponible
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Registro con email y contraseña
+      operationId: register
+      x-implemented: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "200":
+          description: Usuario registrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Email ya registrado
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login con email y contraseña (devuelve token + user)
+      operationId: login
+      x-implemented: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: JWT emitido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/oauth/google:
+    post:
+      tags: [Auth]
+      summary: Sincronizar sesión Google (NextAuth) y obtener JWT
+      x-implemented: true
+      description: |
+        Llamar desde el front después de `signIn("google")`.
+        Crea el usuario si no existe (rol `USER` o `PROFESSIONAL` según `intent`).
+      operationId: oauthGoogle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OAuthGoogleRequest"
+      responses:
+        "200":
+          description: JWT emitido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Perfil del usuario autenticado
+      operationId: getCurrentUser
+      x-implemented: true
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Perfil
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [Users]
+      summary: Actualizar perfil y preferencias
+      operationId: updateCurrentUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: Perfil actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [Users]
+      summary: Eliminar cuenta
+      operationId: deleteCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Cuenta eliminada
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /professionals:
+    get:
+      tags: [Professionals]
+      summary: Listar profesionales (público)
+      operationId: listProfessionals
+      parameters:
+        - name: serviceId
+          in: query
+          description: Filtrar por categoría (ej. electricidad)
+          schema:
+            type: string
+        - name: q
+          in: query
+          description: Búsqueda por nombre, servicio o ubicación
+          schema:
+            type: string
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Lista paginada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalPage"
+    post:
+      tags: [Professionals]
+      summary: Crear perfil profesional (usuario autenticado)
+      description: Usado tras `/register` o `/professional/setup`.
+      operationId: createProfessional
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProfessionalRequest"
+      responses:
+        "201":
+          description: Perfil creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Professional"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: El usuario ya tiene perfil profesional
+
+  /professionals/me:
+    get:
+      tags: [Professionals]
+      summary: Perfil profesional del usuario autenticado
+      operationId: getMyProfessional
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Perfil profesional
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Professional"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Professionals]
+      summary: Actualizar perfil profesional
+      operationId: updateMyProfessional
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfessionalRequest"
+      responses:
+        "200":
+          description: Perfil actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Professional"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /professionals/{id}:
+    get:
+      tags: [Professionals]
+      summary: Detalle de un profesional
+      operationId: getProfessionalById
+      parameters:
+        - $ref: "#/components/parameters/ProfessionalId"
+      responses:
+        "200":
+          description: Profesional
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Professional"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /professionals/{id}/reviews:
+    get:
+      tags: [Reviews]
+      summary: Reseñas de un profesional
+      operationId: listProfessionalReviews
+      parameters:
+        - $ref: "#/components/parameters/ProfessionalId"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Reseñas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewPage"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Reviews]
+      summary: Crear reseña (cliente autenticado)
+      operationId: createReview
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ProfessionalId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReviewRequest"
+      responses:
+        "201":
+          description: Reseña creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /services:
+    get:
+      tags: [Services]
+      summary: Catálogo de categorías de servicio
+      operationId: listServices
+      responses:
+        "200":
+          description: Lista de servicios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Service"
+
+  /services/{serviceId}/professionals:
+    get:
+      tags: [Services]
+      summary: Profesionales por categoría
+      operationId: listProfessionalsByService
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Lista paginada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalPage"
+        "404":
+          description: Categoría inexistente
+
+  /testimonials:
+    get:
+      tags: [Reviews]
+      summary: Testimonios destacados (marketing / home)
+      operationId: listTestimonials
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 6
+      responses:
+        "200":
+          description: Testimonios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Testimonial"
+
+  /requests:
+    get:
+      tags: [Requests]
+      summary: Solicitudes del usuario (cliente o profesional)
+      operationId: listRequests
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/RequestStatus"
+        - name: role
+          in: query
+          description: Vista como cliente o como profesional
+          schema:
+            type: string
+            enum: [client, professional]
+      responses:
+        "200":
+          description: Solicitudes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ServiceRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Requests]
+      summary: Contactar / solicitar presupuesto a un profesional
+      operationId: createRequest
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateServiceRequest"
+      responses:
+        "201":
+          description: Solicitud creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /favorites:
+    get:
+      tags: [Requests]
+      summary: Profesionales guardados
+      operationId: listFavorites
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Favoritos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Professional"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /favorites/{professionalId}:
+    post:
+      tags: [Requests]
+      summary: Guardar profesional
+      operationId: addFavorite
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: professionalId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Guardado
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Requests]
+      summary: Quitar de favoritos
+      operationId: removeFavorite
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: professionalId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Eliminado
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /dashboard/stats:
+    get:
+      tags: [Dashboard]
+      summary: Estadísticas del dashboard profesional
+      operationId: getDashboardStats
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Métricas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token devuelto por /auth/login o /auth/oauth/google
+
+  parameters:
+    ProfessionalId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Datos inválidos
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: No autenticado o token inválido
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    # --- Auth (implementado parcialmente) ---
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    OAuthGoogleRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        picture:
+          type: string
+          format: uri
+        googleSub:
+          type: string
+          description: ID estable de Google (token.sub de NextAuth)
+        intent:
+          type: string
+          enum: [client, professional]
+          default: client
+          description: professional si viene de /register
+
+    AuthTokenResponse:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserProfile"
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+
+    # --- Users ---
+    UserProfile:
+      type: object
+      required: [id, email, role]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          nullable: true
+        picture:
+          type: string
+          format: uri
+          nullable: true
+        role:
+          type: string
+          enum: [USER, PROFESSIONAL, ADMIN]
+        hasProfessionalProfile:
+          type: boolean
+          default: false
+        emailNotifications:
+          type: boolean
+          default: true
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        emailNotifications:
+          type: boolean
+
+    # --- Front: types/index.ts ---
+    Service:
+      type: object
+      required: [id, name, description, icon, color]
+      properties:
+        id:
+          type: string
+          example: electricidad
+        name:
+          type: string
+        description:
+          type: string
+        icon:
+          type: string
+          example: "⚡"
+        color:
+          type: string
+          example: bg-yellow-500
+
+    ProfessionalAvailability:
+      type: string
+      enum: [disponible, ocupado, no-disponible]
+
+    Professional:
+      type: object
+      required:
+        - id
+        - name
+        - service
+        - serviceId
+        - rating
+        - reviewCount
+        - hourlyRate
+        - image
+        - location
+        - description
+        - experience
+        - verified
+        - availability
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          description: Nombre público o del negocio
+        service:
+          type: string
+          description: Nombre legible de la categoría principal
+        serviceId:
+          type: string
+        serviceIds:
+          type: array
+          items:
+            type: string
+          description: Todas las categorías que ofrece
+        rating:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 5
+        reviewCount:
+          type: integer
+          minimum: 0
+        hourlyRate:
+          type: integer
+          description: Tarifa en moneda local (ARS)
+        image:
+          type: string
+          description: URL o emoji/avatar
+        location:
+          type: string
+        description:
+          type: string
+        experience:
+          type: integer
+          minimum: 0
+        verified:
+          type: boolean
+        availability:
+          $ref: "#/components/schemas/ProfessionalAvailability"
+        phone:
+          type: string
+          nullable: true
+
+    ProfessionalPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/Professional"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+
+    CreateProfessionalRequest:
+      type: object
+      required: [name, serviceIds, location, description]
+      properties:
+        name:
+          type: string
+          description: Nombre del negocio o profesional (businessName en el form)
+        serviceIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        experience:
+          type: integer
+          minimum: 0
+        phone:
+          type: string
+        location:
+          type: string
+          description: Zona de trabajo (workArea)
+        description:
+          type: string
+        hourlyRate:
+          type: integer
+          minimum: 0
+        availability:
+          $ref: "#/components/schemas/ProfessionalAvailability"
+
+    UpdateProfessionalRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateProfessionalRequest"
+
+    Review:
+      type: object
+      required:
+        - id
+        - professionalId
+        - clientName
+        - rating
+        - comment
+        - date
+      properties:
+        id:
+          type: string
+        professionalId:
+          type: string
+        clientName:
+          type: string
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+        date:
+          type: string
+          format: date-time
+
+    ReviewPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/Review"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+
+    CreateReviewRequest:
+      type: object
+      required: [rating, comment]
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+
+    Testimonial:
+      type: object
+      required:
+        - id
+        - name
+        - location
+        - service
+        - rating
+        - comment
+        - date
+        - professionalName
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        location:
+          type: string
+        service:
+          type: string
+        rating:
+          type: number
+        comment:
+          type: string
+        date:
+          type: string
+          format: date-time
+        professionalName:
+          type: string
+
+    RequestStatus:
+      type: string
+      enum: [pending, accepted, in_progress, completed, cancelled]
+
+    ServiceRequest:
+      type: object
+      required: [id, professionalId, status, createdAt]
+      properties:
+        id:
+          type: string
+        professionalId:
+          type: string
+        professionalName:
+          type: string
+        clientUserId:
+          type: string
+        message:
+          type: string
+        status:
+          $ref: "#/components/schemas/RequestStatus"
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateServiceRequest:
+      type: object
+      required: [professionalId, message]
+      properties:
+        professionalId:
+          type: string
+        message:
+          type: string
+          maxLength: 2000
+
+    DashboardStats:
+      type: object
+      properties:
+        activeRequests:
+          type: integer
+          description: Solicitudes activas (dashboard)
+        completedJobs:
+          type: integer
+        averageRating:
+          type: number
+          nullable: true
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceRequest"

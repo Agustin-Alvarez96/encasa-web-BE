@@ -169,7 +169,6 @@ public class AdminController {
     }
 
     private AdminUserResponse toUserResponse(User u) {
-        return new AdminUserResponse(u.getId(), u.getEmail(), u.getName(),
-                u.getPhone(), u.getLocation(), u.getRole());
+        return new AdminUserResponse(u.getId(), u.getEmail(), u.getName(), u.getRole());
     }
 }
