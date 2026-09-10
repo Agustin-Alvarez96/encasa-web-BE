@@ -1,5 +1,7 @@
 package com.encasa.services;
 
+import com.encasa.bookings.dto.BookingResponse;
+import com.encasa.bookings.dto.ClientBookingResponse;
 import com.encasa.bookings.dto.CreateBookingRequest;
 import com.encasa.models.Booking;
 import com.encasa.models.Booking.Status;
@@ -7,12 +9,15 @@ import com.encasa.models.Professional;
 import com.encasa.models.User;
 import com.encasa.repositories.BookingRepository;
 import com.encasa.repositories.ProfessionalRepository;
+import com.encasa.repositories.ServiceRepository;
 import com.encasa.repositories.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class BookingService {
@@ -20,13 +25,16 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final ProfessionalRepository professionalRepository;
+    private final ServiceRepository serviceRepository;
 
     public BookingService(BookingRepository bookingRepository,
                           UserRepository userRepository,
-                          ProfessionalRepository professionalRepository) {
+                          ProfessionalRepository professionalRepository,
+                          ServiceRepository serviceRepository) {
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
         this.professionalRepository = professionalRepository;
+        this.serviceRepository = serviceRepository;
     }
 
     public Booking create(String clientEmail, CreateBookingRequest req) {
@@ -54,16 +62,70 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
-    public List<Booking> getMyBookingsAsClient(String email) {
+    public List<ClientBookingResponse> getMyBookingsAsClient(String email) {
         Long userId = findUser(email).getId();
-        return bookingRepository.findByClientUserIdOrderByScheduledDateDesc(userId);
+        List<Booking> bookings = bookingRepository.findByClientUserIdOrderByScheduledDateDesc(userId);
+
+        List<Long> professionalIds = bookings.stream().map(Booking::getProfessionalId).distinct().collect(Collectors.toList());
+        Map<Long, Professional> profById = professionalRepository.findAllById(professionalIds).stream()
+                .collect(Collectors.toMap(Professional::getId, p -> p));
+
+        Map<String, String> serviceNames = serviceRepository.findAll().stream()
+                .collect(Collectors.toMap(s -> s.getId(), s -> s.getName()));
+
+        return bookings.stream().map(b -> {
+            Professional prof = profById.get(b.getProfessionalId());
+            return new ClientBookingResponse(
+                    b.getId(),
+                    b.getProfessionalId(),
+                    prof != null ? prof.getName() : "Profesional",
+                    prof != null ? prof.getPhone() : null,
+                    b.getServiceId(),
+                    serviceNames.getOrDefault(b.getServiceId(), b.getServiceId()),
+                    b.getScheduledDate(),
+                    b.getStatus().name(),
+                    b.getNotes(),
+                    b.getEstimatedHours(),
+                    b.getTotalPrice(),
+                    b.getCreatedAt(),
+                    b.getUpdatedAt()
+            );
+        }).collect(Collectors.toList());
     }
 
-    public List<Booking> getMyBookingsAsProfessional(String email) {
+    public List<BookingResponse> getMyBookingsAsProfessional(String email) {
         Long userId = findUser(email).getId();
         Professional professional = professionalRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Professional profile not found"));
-        return bookingRepository.findByProfessionalIdOrderByScheduledDateDesc(professional.getId());
+
+        List<Booking> bookings = bookingRepository.findByProfessionalIdOrderByScheduledDateDesc(professional.getId());
+
+        List<Long> clientIds = bookings.stream().map(Booking::getClientUserId).distinct().collect(Collectors.toList());
+        Map<Long, User> clientsById = userRepository.findAllById(clientIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+
+        Map<String, String> serviceNames = serviceRepository.findAll().stream()
+                .collect(Collectors.toMap(s -> s.getId(), s -> s.getName()));
+
+        return bookings.stream().map(b -> {
+            User client = clientsById.get(b.getClientUserId());
+            return new BookingResponse(
+                    b.getId(),
+                    b.getClientUserId(),
+                    client != null ? client.getName() : "Cliente",
+                    client != null ? client.getEmail() : null,
+                    b.getProfessionalId(),
+                    b.getServiceId(),
+                    serviceNames.getOrDefault(b.getServiceId(), b.getServiceId()),
+                    b.getScheduledDate(),
+                    b.getStatus().name(),
+                    b.getNotes(),
+                    b.getEstimatedHours(),
+                    b.getTotalPrice(),
+                    b.getCreatedAt(),
+                    b.getUpdatedAt()
+            );
+        }).collect(Collectors.toList());
     }
 
     public Booking confirm(String professionalEmail, Long bookingId) {

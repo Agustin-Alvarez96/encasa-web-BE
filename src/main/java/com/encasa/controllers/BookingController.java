@@ -1,5 +1,7 @@
 package com.encasa.controllers;
 
+import com.encasa.bookings.dto.BookingResponse;
+import com.encasa.bookings.dto.ClientBookingResponse;
 import com.encasa.bookings.dto.CreateBookingRequest;
 import com.encasa.models.Booking;
 import com.encasa.services.BookingService;
@@ -30,13 +32,13 @@ public class BookingController {
     }
 
     @GetMapping("/me")
-    public List<Booking> myBookingsAsClient(
+    public List<ClientBookingResponse> myBookingsAsClient(
             @AuthenticationPrincipal UserDetails userDetails) {
         return bookingService.getMyBookingsAsClient(userDetails.getUsername());
     }
 
     @GetMapping("/professional")
-    public List<Booking> myBookingsAsProfessional(
+    public List<BookingResponse> myBookingsAsProfessional(
             @AuthenticationPrincipal UserDetails userDetails) {
         return bookingService.getMyBookingsAsProfessional(userDetails.getUsername());
     }

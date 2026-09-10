@@ -34,6 +34,8 @@ public class Professional {
     @Column(name = "tag")
     private List<String> tags = new ArrayList<>();
 
+    private String phone;
+
     public Professional() {}
 
     public Long getId() { return id; }
@@ -51,6 +53,7 @@ public class Professional {
     public Boolean getVerified() { return verified; }
     public String getAvailability() { return availability; }
     public List<String> getTags() { return tags; }
+    public String getPhone() { return phone; }
 
     public void setUserId(Long userId) { this.userId = userId; }
     public void setName(String name) { this.name = name; }
@@ -66,4 +69,5 @@ public class Professional {
     public void setVerified(Boolean verified) { this.verified = verified; }
     public void setAvailability(String availability) { this.availability = availability; }
     public void setTags(List<String> tags) { this.tags = tags != null ? tags : new ArrayList<>(); }
+    public void setPhone(String phone) { this.phone = phone; }
 }
