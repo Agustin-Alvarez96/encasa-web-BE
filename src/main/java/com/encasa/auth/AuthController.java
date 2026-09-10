@@ -2,6 +2,7 @@ package com.encasa.auth;
 
 import com.encasa.auth.dto.LoginRequest;
 import com.encasa.auth.dto.RegisterRequest;
+import com.encasa.auth.dto.SyncRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +27,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         String token = authService.login(request);
+        return ResponseEntity.ok(Map.of("token", token));
+    }
+
+    @PostMapping("/sync")
+    public ResponseEntity<?> sync(@RequestBody SyncRequest request) {
+        String token = authService.sync(request);
         return ResponseEntity.ok(Map.of("token", token));
     }
 }

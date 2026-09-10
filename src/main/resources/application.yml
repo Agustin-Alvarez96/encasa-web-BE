@@ -18,3 +18,9 @@ server:
 jwt:
   secret: encasa-super-secret-key-que-luego-va-a-env
   expiration: 86400000
+
+booking:
+  auto-complete-days: 5
+
+cors:
+  allowed-origins: http://localhost:3000
