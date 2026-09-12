@@ -4,7 +4,6 @@ import com.encasa.models.Booking;
 import com.encasa.models.Professional;
 import com.encasa.models.Review;
 import com.encasa.models.User;
-import com.encasa.repositories.BookingRepository;
 import com.encasa.repositories.ProfessionalRepository;
 import com.encasa.repositories.ReviewRepository;
 import com.encasa.repositories.UserRepository;
@@ -20,16 +19,16 @@ import java.util.List;
 public class ReviewService {
 
     private final ReviewRepository reviewRepository;
-    private final BookingRepository bookingRepository;
+    private final BookingService bookingService;
     private final ProfessionalRepository professionalRepository;
     private final UserRepository userRepository;
 
     public ReviewService(ReviewRepository reviewRepository,
-                         BookingRepository bookingRepository,
+                         BookingService bookingService,
                          ProfessionalRepository professionalRepository,
                          UserRepository userRepository) {
         this.reviewRepository = reviewRepository;
-        this.bookingRepository = bookingRepository;
+        this.bookingService = bookingService;
         this.professionalRepository = professionalRepository;
         this.userRepository = userRepository;
     }
@@ -42,8 +41,7 @@ public class ReviewService {
 
         User client = findUser(clientEmail);
 
-        Booking booking = bookingRepository.findById(req.bookingId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
+        Booking booking = bookingService.findAndResolve(req.bookingId());
 
         if (!booking.getClientUserId().equals(client.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo podés reseñar tus propias reservas");
