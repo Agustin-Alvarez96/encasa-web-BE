@@ -16,5 +16,7 @@ public record BookingResponse(
         Integer estimatedHours,
         Integer totalPrice,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        LocalDateTime clientConfirmedAt,
+        LocalDateTime professionalConfirmedAt
 ) {}
