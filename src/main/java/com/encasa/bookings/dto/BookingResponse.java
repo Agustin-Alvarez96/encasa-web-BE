@@ -1,6 +1,7 @@
 package com.encasa.bookings.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record BookingResponse(
         Long id,
@@ -18,5 +19,6 @@ public record BookingResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         LocalDateTime clientConfirmedAt,
-        LocalDateTime professionalConfirmedAt
+        LocalDateTime professionalConfirmedAt,
+        List<String> photoUrls
 ) {}
