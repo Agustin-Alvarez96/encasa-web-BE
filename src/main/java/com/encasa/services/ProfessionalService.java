@@ -60,6 +60,7 @@ public class ProfessionalService {
         professional.setExperience(req.experience());
         professional.setAvailability(req.availability());
         professional.setTags(req.tags());
+        professional.setPhone(req.phone());
         professional.setRating(0.0);
         professional.setReviewCount(0);
         professional.setVerified(false);
@@ -89,6 +90,7 @@ public class ProfessionalService {
         if (req.experience() != null)   professional.setExperience(req.experience());
         if (req.availability() != null) professional.setAvailability(req.availability());
         if (req.tags() != null)         professional.setTags(req.tags());
+        if (req.phone() != null)        professional.setPhone(req.phone());
 
         return professionalRepository.save(professional);
     }

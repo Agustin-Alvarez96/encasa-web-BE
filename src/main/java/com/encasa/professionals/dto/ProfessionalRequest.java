@@ -11,5 +11,6 @@ public record ProfessionalRequest(
         String description,
         String experience,
         String availability,
-        List<String> tags
+        List<String> tags,
+        String phone
 ) {}

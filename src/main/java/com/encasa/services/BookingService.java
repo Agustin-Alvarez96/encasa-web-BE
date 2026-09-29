@@ -1,5 +1,7 @@
 package com.encasa.services;
 
+import com.encasa.bookings.dto.BookingResponse;
+import com.encasa.bookings.dto.ClientBookingResponse;
 import com.encasa.bookings.dto.CreateBookingRequest;
 import com.encasa.models.Booking;
 import com.encasa.models.Booking.Status;
@@ -7,12 +9,17 @@ import com.encasa.models.Professional;
 import com.encasa.models.User;
 import com.encasa.repositories.BookingRepository;
 import com.encasa.repositories.ProfessionalRepository;
+import com.encasa.repositories.ServiceRepository;
 import com.encasa.repositories.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class BookingService {
@@ -20,13 +27,22 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final ProfessionalRepository professionalRepository;
+    private final ServiceRepository serviceRepository;
+    private final NotificationService notificationService;
+
+    @Value("${booking.auto-complete-days:5}")
+    private long autoCompleteDays;
 
     public BookingService(BookingRepository bookingRepository,
                           UserRepository userRepository,
-                          ProfessionalRepository professionalRepository) {
+                          ProfessionalRepository professionalRepository,
+                          ServiceRepository serviceRepository,
+                          NotificationService notificationService) {
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
         this.professionalRepository = professionalRepository;
+        this.serviceRepository = serviceRepository;
+        this.notificationService = notificationService;
     }
 
     public Booking create(String clientEmail, CreateBookingRequest req) {
@@ -37,6 +53,9 @@ public class BookingService {
         if (req.scheduledDate() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "scheduledDate is required");
         }
+        if (req.photoUrls() != null && req.photoUrls().size() > 5) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Máximo 5 fotos por solicitud");
+        }
 
         Booking booking = new Booking();
         booking.setClientUserId(client.getId());
@@ -45,25 +64,90 @@ public class BookingService {
         booking.setScheduledDate(req.scheduledDate());
         booking.setEstimatedHours(req.estimatedHours());
         booking.setNotes(req.notes());
+        booking.setPhotoUrls(req.photoUrls());
         booking.setStatus(Status.PENDING);
 
         if (req.estimatedHours() != null && professional.getHourlyRate() != null) {
             booking.setTotalPrice(req.estimatedHours() * professional.getHourlyRate());
         }
 
-        return bookingRepository.save(booking);
+        Booking saved = bookingRepository.save(booking);
+        notificationService.notifyNewBooking(professional.getUserId(), client.getName() != null ? client.getName() : client.getEmail(), saved.getId());
+        return saved;
     }
 
-    public List<Booking> getMyBookingsAsClient(String email) {
+    public List<ClientBookingResponse> getMyBookingsAsClient(String email) {
         Long userId = findUser(email).getId();
-        return bookingRepository.findByClientUserIdOrderByScheduledDateDesc(userId);
+        List<Booking> bookings = bookingRepository.findByClientUserIdOrderByScheduledDateDesc(userId)
+                .stream().map(this::resolveAutoComplete).collect(Collectors.toList());
+
+        List<Long> professionalIds = bookings.stream().map(Booking::getProfessionalId).distinct().collect(Collectors.toList());
+        Map<Long, Professional> profById = professionalRepository.findAllById(professionalIds).stream()
+                .collect(Collectors.toMap(Professional::getId, p -> p));
+
+        Map<String, String> serviceNames = serviceRepository.findAll().stream()
+                .collect(Collectors.toMap(s -> s.getId(), s -> s.getName()));
+
+        return bookings.stream().map(b -> {
+            Professional prof = profById.get(b.getProfessionalId());
+            return new ClientBookingResponse(
+                    b.getId(),
+                    b.getProfessionalId(),
+                    prof != null ? prof.getName() : "Profesional",
+                    prof != null ? prof.getPhone() : null,
+                    b.getServiceId(),
+                    serviceNames.getOrDefault(b.getServiceId(), b.getServiceId()),
+                    b.getScheduledDate(),
+                    b.getStatus().name(),
+                    b.getNotes(),
+                    b.getEstimatedHours(),
+                    b.getTotalPrice(),
+                    b.getCreatedAt(),
+                    b.getUpdatedAt(),
+                    b.getClientConfirmedAt(),
+                    b.getProfessionalConfirmedAt(),
+                    b.getPhotoUrls()
+            );
+        }).collect(Collectors.toList());
     }
 
-    public List<Booking> getMyBookingsAsProfessional(String email) {
+    public List<BookingResponse> getMyBookingsAsProfessional(String email) {
         Long userId = findUser(email).getId();
         Professional professional = professionalRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Professional profile not found"));
-        return bookingRepository.findByProfessionalIdOrderByScheduledDateDesc(professional.getId());
+
+        List<Booking> bookings = bookingRepository.findByProfessionalIdOrderByScheduledDateDesc(professional.getId())
+                .stream().map(this::resolveAutoComplete).collect(Collectors.toList());
+
+        List<Long> clientIds = bookings.stream().map(Booking::getClientUserId).distinct().collect(Collectors.toList());
+        Map<Long, User> clientsById = userRepository.findAllById(clientIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+
+        Map<String, String> serviceNames = serviceRepository.findAll().stream()
+                .collect(Collectors.toMap(s -> s.getId(), s -> s.getName()));
+
+        return bookings.stream().map(b -> {
+            User client = clientsById.get(b.getClientUserId());
+            return new BookingResponse(
+                    b.getId(),
+                    b.getClientUserId(),
+                    client != null ? client.getName() : "Cliente",
+                    client != null ? client.getEmail() : null,
+                    b.getProfessionalId(),
+                    b.getServiceId(),
+                    serviceNames.getOrDefault(b.getServiceId(), b.getServiceId()),
+                    b.getScheduledDate(),
+                    b.getStatus().name(),
+                    b.getNotes(),
+                    b.getEstimatedHours(),
+                    b.getTotalPrice(),
+                    b.getCreatedAt(),
+                    b.getUpdatedAt(),
+                    b.getClientConfirmedAt(),
+                    b.getProfessionalConfirmedAt(),
+                    b.getPhotoUrls()
+            );
+        }).collect(Collectors.toList());
     }
 
     public Booking confirm(String professionalEmail, Long bookingId) {
@@ -82,18 +166,96 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
-    public Booking complete(String professionalEmail, Long bookingId) {
-        Booking booking = getBookingForProfessional(professionalEmail, bookingId);
+    /**
+     * Confirmación de dos partes: la puede llamar el cliente o el profesional de la
+     * reserva. Registra la confirmación de quien llama; la reserva pasa a COMPLETED
+     * recién cuando ambas partes confirmaron (o, en confirmCompletion en el futuro
+     * de una sola parte, cuando pasan {@code booking.auto-complete-days} días —
+     * ver {@link #resolveAutoComplete}).
+     */
+    public Booking complete(String email, Long bookingId) {
+        Long userId = findUser(email).getId();
+        Booking booking = getBookingForParticipant(email, bookingId);
         requireStatus(booking, Status.CONFIRMED, "Only confirmed bookings can be completed");
-        booking.setStatus(Status.COMPLETED);
-        return bookingRepository.save(booking);
+
+        boolean isClient = booking.getClientUserId().equals(userId);
+        Professional professional = professionalRepository.findById(booking.getProfessionalId()).orElse(null);
+        boolean isProfessional = professional != null && professional.getUserId().equals(userId);
+
+        LocalDateTime now = LocalDateTime.now();
+        boolean justConfirmedByClient = isClient && booking.getClientConfirmedAt() == null;
+        boolean justConfirmedByProfessional = isProfessional && booking.getProfessionalConfirmedAt() == null;
+        if (justConfirmedByClient) {
+            booking.setClientConfirmedAt(now);
+        }
+        if (justConfirmedByProfessional) {
+            booking.setProfessionalConfirmedAt(now);
+        }
+
+        boolean nowCompleted = false;
+        if (booking.getClientConfirmedAt() != null && booking.getProfessionalConfirmedAt() != null) {
+            booking.setStatus(Status.COMPLETED);
+            nowCompleted = true;
+        }
+
+        Booking saved = bookingRepository.save(booking);
+
+        if (nowCompleted) {
+            String professionalName = professional != null ? professional.getName() : "el profesional";
+            notificationService.notifyBookingCompleted(booking.getClientUserId(), professionalName, booking.getId());
+        } else if (justConfirmedByClient && professional != null) {
+            notificationService.notifyBookingNeedsConfirmation(professional.getUserId(), booking.getId());
+        } else if (justConfirmedByProfessional) {
+            notificationService.notifyBookingNeedsConfirmation(booking.getClientUserId(), booking.getId());
+        }
+
+        return saved;
     }
 
     public List<Booking> getAll() {
         return bookingRepository.findAll();
     }
 
+    /**
+     * Usado por ReviewService: misma reserva, pero pasando primero por el chequeo
+     * de auto-cierre por timeout, para que un review no quede bloqueado solo porque
+     * nadie volvió a abrir /bookings después de que venció el plazo.
+     */
+    public Booking findAndResolve(Long bookingId) {
+        return resolveAutoComplete(findBooking(bookingId));
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Si una sola de las partes confirmó y pasaron más de {@code autoCompleteDays}
+     * días, la reserva se cierra sola (sin cron: se evalúa cada vez que se lee).
+     */
+    private Booking resolveAutoComplete(Booking booking) {
+        if (booking.getStatus() != Status.CONFIRMED) {
+            return booking;
+        }
+
+        LocalDateTime oneSidedConfirmation = null;
+        if (booking.getClientConfirmedAt() != null && booking.getProfessionalConfirmedAt() == null) {
+            oneSidedConfirmation = booking.getClientConfirmedAt();
+        } else if (booking.getProfessionalConfirmedAt() != null && booking.getClientConfirmedAt() == null) {
+            oneSidedConfirmation = booking.getProfessionalConfirmedAt();
+        }
+
+        if (oneSidedConfirmation != null && oneSidedConfirmation.plusDays(autoCompleteDays).isBefore(LocalDateTime.now())) {
+            booking.setStatus(Status.COMPLETED);
+            Booking saved = bookingRepository.save(booking);
+            Professional professional = professionalRepository.findById(booking.getProfessionalId()).orElse(null);
+            notificationService.notifyBookingCompleted(
+                    booking.getClientUserId(),
+                    professional != null ? professional.getName() : "el profesional",
+                    booking.getId());
+            return saved;
+        }
+
+        return booking;
+    }
 
     private Booking getBookingForProfessional(String email, Long bookingId) {
         Long userId = findUser(email).getId();

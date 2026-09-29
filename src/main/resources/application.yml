@@ -28,3 +28,6 @@ jwt:
 
 allowed:
   origins: ${ALLOWED_ORIGINS:http://localhost:3000}
+
+booking:
+  auto-complete-days: ${BOOKING_AUTO_COMPLETE_DAYS:5}

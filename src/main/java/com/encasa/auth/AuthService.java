@@ -50,6 +50,9 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setRole(ROLE_USER);
         user.setAuthProvider(AUTH_PROVIDER_LOCAL);
+        if (request.name() != null && !request.name().isBlank()) {
+            user.setName(request.name().trim());
+        }
         userRepository.save(user);
     }
 
