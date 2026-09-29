@@ -22,15 +22,18 @@ public class ReviewService {
     private final BookingService bookingService;
     private final ProfessionalRepository professionalRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     public ReviewService(ReviewRepository reviewRepository,
                          BookingService bookingService,
                          ProfessionalRepository professionalRepository,
-                         UserRepository userRepository) {
+                         UserRepository userRepository,
+                         NotificationService notificationService) {
         this.reviewRepository = reviewRepository;
         this.bookingService = bookingService;
         this.professionalRepository = professionalRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -64,6 +67,12 @@ public class ReviewService {
 
         Review saved = reviewRepository.save(review);
         recalculateProfessionalRating(booking.getProfessionalId());
+
+        Professional professional = professionalRepository.findById(booking.getProfessionalId()).orElse(null);
+        if (professional != null) {
+            notificationService.notifyReviewReceived(professional.getUserId(), saved.getRating(), booking.getId());
+        }
+
         return saved;
     }
 
