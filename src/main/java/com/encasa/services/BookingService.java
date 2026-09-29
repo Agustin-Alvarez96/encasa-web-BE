@@ -28,6 +28,7 @@ public class BookingService {
     private final UserRepository userRepository;
     private final ProfessionalRepository professionalRepository;
     private final ServiceRepository serviceRepository;
+    private final NotificationService notificationService;
 
     @Value("${booking.auto-complete-days:5}")
     private long autoCompleteDays;
@@ -35,11 +36,13 @@ public class BookingService {
     public BookingService(BookingRepository bookingRepository,
                           UserRepository userRepository,
                           ProfessionalRepository professionalRepository,
-                          ServiceRepository serviceRepository) {
+                          ServiceRepository serviceRepository,
+                          NotificationService notificationService) {
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
         this.professionalRepository = professionalRepository;
         this.serviceRepository = serviceRepository;
+        this.notificationService = notificationService;
     }
 
     public Booking create(String clientEmail, CreateBookingRequest req) {
@@ -68,7 +71,9 @@ public class BookingService {
             booking.setTotalPrice(req.estimatedHours() * professional.getHourlyRate());
         }
 
-        return bookingRepository.save(booking);
+        Booking saved = bookingRepository.save(booking);
+        notificationService.notifyNewBooking(professional.getUserId(), client.getName() != null ? client.getName() : client.getEmail(), saved.getId());
+        return saved;
     }
 
     public List<ClientBookingResponse> getMyBookingsAsClient(String email) {
@@ -174,23 +179,37 @@ public class BookingService {
         requireStatus(booking, Status.CONFIRMED, "Only confirmed bookings can be completed");
 
         boolean isClient = booking.getClientUserId().equals(userId);
-        boolean isProfessional = professionalRepository.findByUserId(userId)
-                .map(p -> p.getId().equals(booking.getProfessionalId()))
-                .orElse(false);
+        Professional professional = professionalRepository.findById(booking.getProfessionalId()).orElse(null);
+        boolean isProfessional = professional != null && professional.getUserId().equals(userId);
 
         LocalDateTime now = LocalDateTime.now();
-        if (isClient && booking.getClientConfirmedAt() == null) {
+        boolean justConfirmedByClient = isClient && booking.getClientConfirmedAt() == null;
+        boolean justConfirmedByProfessional = isProfessional && booking.getProfessionalConfirmedAt() == null;
+        if (justConfirmedByClient) {
             booking.setClientConfirmedAt(now);
         }
-        if (isProfessional && booking.getProfessionalConfirmedAt() == null) {
+        if (justConfirmedByProfessional) {
             booking.setProfessionalConfirmedAt(now);
         }
 
+        boolean nowCompleted = false;
         if (booking.getClientConfirmedAt() != null && booking.getProfessionalConfirmedAt() != null) {
             booking.setStatus(Status.COMPLETED);
+            nowCompleted = true;
         }
 
-        return bookingRepository.save(booking);
+        Booking saved = bookingRepository.save(booking);
+
+        if (nowCompleted) {
+            String professionalName = professional != null ? professional.getName() : "el profesional";
+            notificationService.notifyBookingCompleted(booking.getClientUserId(), professionalName, booking.getId());
+        } else if (justConfirmedByClient && professional != null) {
+            notificationService.notifyBookingNeedsConfirmation(professional.getUserId(), booking.getId());
+        } else if (justConfirmedByProfessional) {
+            notificationService.notifyBookingNeedsConfirmation(booking.getClientUserId(), booking.getId());
+        }
+
+        return saved;
     }
 
     public List<Booking> getAll() {
@@ -226,7 +245,13 @@ public class BookingService {
 
         if (oneSidedConfirmation != null && oneSidedConfirmation.plusDays(autoCompleteDays).isBefore(LocalDateTime.now())) {
             booking.setStatus(Status.COMPLETED);
-            return bookingRepository.save(booking);
+            Booking saved = bookingRepository.save(booking);
+            Professional professional = professionalRepository.findById(booking.getProfessionalId()).orElse(null);
+            notificationService.notifyBookingCompleted(
+                    booking.getClientUserId(),
+                    professional != null ? professional.getName() : "el profesional",
+                    booking.getId());
+            return saved;
         }
 
         return booking;
