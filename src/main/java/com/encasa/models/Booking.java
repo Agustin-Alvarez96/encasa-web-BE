@@ -2,6 +2,8 @@ package com.encasa.models;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "bookings")
@@ -45,6 +47,13 @@ public class Booking {
     private LocalDateTime clientConfirmedAt;
     private LocalDateTime professionalConfirmedAt;
 
+    // URLs de Cloudinary (subidas directo desde el navegador) que el cliente
+    // adjunta al pedir el turno, para que el profesional evalúe el trabajo.
+    @ElementCollection
+    @CollectionTable(name = "booking_photos", joinColumns = @JoinColumn(name = "booking_id"))
+    @Column(name = "url", length = 500)
+    private List<String> photoUrls = new ArrayList<>();
+
     public Booking() {}
 
     public Long getId() { return id; }
@@ -60,6 +69,7 @@ public class Booking {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public LocalDateTime getClientConfirmedAt() { return clientConfirmedAt; }
     public LocalDateTime getProfessionalConfirmedAt() { return professionalConfirmedAt; }
+    public List<String> getPhotoUrls() { return photoUrls; }
 
     public void setClientUserId(Long clientUserId) { this.clientUserId = clientUserId; }
     public void setProfessionalId(Long professionalId) { this.professionalId = professionalId; }
@@ -71,4 +81,5 @@ public class Booking {
     public void setTotalPrice(Integer totalPrice) { this.totalPrice = totalPrice; }
     public void setClientConfirmedAt(LocalDateTime clientConfirmedAt) { this.clientConfirmedAt = clientConfirmedAt; }
     public void setProfessionalConfirmedAt(LocalDateTime professionalConfirmedAt) { this.professionalConfirmedAt = professionalConfirmedAt; }
+    public void setPhotoUrls(List<String> photoUrls) { this.photoUrls = photoUrls != null ? photoUrls : new ArrayList<>(); }
 }

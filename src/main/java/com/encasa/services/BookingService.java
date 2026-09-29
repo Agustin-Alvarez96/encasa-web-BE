@@ -50,6 +50,9 @@ public class BookingService {
         if (req.scheduledDate() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "scheduledDate is required");
         }
+        if (req.photoUrls() != null && req.photoUrls().size() > 5) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Máximo 5 fotos por solicitud");
+        }
 
         Booking booking = new Booking();
         booking.setClientUserId(client.getId());
@@ -58,6 +61,7 @@ public class BookingService {
         booking.setScheduledDate(req.scheduledDate());
         booking.setEstimatedHours(req.estimatedHours());
         booking.setNotes(req.notes());
+        booking.setPhotoUrls(req.photoUrls());
         booking.setStatus(Status.PENDING);
 
         if (req.estimatedHours() != null && professional.getHourlyRate() != null) {
@@ -96,7 +100,8 @@ public class BookingService {
                     b.getCreatedAt(),
                     b.getUpdatedAt(),
                     b.getClientConfirmedAt(),
-                    b.getProfessionalConfirmedAt()
+                    b.getProfessionalConfirmedAt(),
+                    b.getPhotoUrls()
             );
         }).collect(Collectors.toList());
     }
@@ -134,7 +139,8 @@ public class BookingService {
                     b.getCreatedAt(),
                     b.getUpdatedAt(),
                     b.getClientConfirmedAt(),
-                    b.getProfessionalConfirmedAt()
+                    b.getProfessionalConfirmedAt(),
+                    b.getPhotoUrls()
             );
         }).collect(Collectors.toList());
     }
